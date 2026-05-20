@@ -151,7 +151,55 @@ const transfer = async (req, res) => {
     }
 };
 
+const withdraw = async (req, res) => {
+    const userId = req.user.userId;
+    const { amount } = req.body;
 
+    try {
+        const user_wallet = await prisma.wallet.findUnique({ where: {userId}});
+        if (!user_wallet) {
+            return res.status(404).json({ message: 'Wallet not found' });
+        }
 
-module.exports = { getBalance, initializePayment, handleWebhook, transfer };
+        if (user_wallet.balance < amount) {
+            return res.status(400).json({ message: 'Insufficient balance' });
+        }
+
+        const reference = `withdraw_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        await prisma.$transaction([
+            prisma.wallet.update({
+                where: { userId },
+                data: { balance: { decrement: amount } }
+            }),
+            prisma.transaction.create({
+                data: {
+                    type: 'WITHDRAWAL',
+                    amount,
+                    status: 'SUCCESS',
+                    reference,
+                    userId
+                }
+            })
+        ]);
+        res.status(200).json({ message: 'Withdrawal successful' });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+const getTransactions = async (req, res) => {
+    const userId = req.user.userId;
+    try {
+        const transactions = await prisma.transaction.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.status(200).json({ transactions });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+module.exports = { getBalance, initializePayment, handleWebhook, transfer, withdraw, getTransactions };
 
