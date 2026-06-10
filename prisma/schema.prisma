@@ -27,6 +27,8 @@ model Wallet {
 
   userId String @unique
   user   User   @relation(fields: [userId], references: [id])
+  transactions         Transaction[] @relation("WalletTransactions")
+  receivedTransactions Transaction[] @relation("ReceivedTransactions")
 }
 
 model Transaction {
@@ -40,6 +42,18 @@ model Transaction {
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
+  walletId String
+  wallet Wallet @relation("WalletTransactions", fields: [walletId], references: {id})
+  receiverWalletId String?
+  receiverWallet   Wallet? @relation("ReceivedTransactions", fields: [receiverWalletId], references: [id])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+
+  paymentProvider  String?
+  paymentReference String?
+  narration        String?
 }
 
 enum TransactionType {
