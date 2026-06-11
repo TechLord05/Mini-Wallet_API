@@ -12,18 +12,25 @@ const getBalance = async (userId) => {
 }
 
 const initializePayment = async (email, amount, userId) => {
+    const wallet = await walletRepository.findWalletByUserId(userId);
+    if (!wallet)
+        throw new Error('Wallet not found');
+    
+    
     const reference = `wallet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const response = await axios.post(
         'https://api.paystack.co/transaction/initialize',
         { email, amount, reference },
         { headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET}` } }
     );
+
     await walletRepository.createTransaction({
         type: 'FUND',
         amount,
         status: 'PENDING',
         reference,
-        userId
+        userId,
+        walletId: wallet.id
     });
     return response.data.data.authorization_url;
 }
@@ -82,7 +89,9 @@ const transferFunds = async (SenderId, RecipientId, amount) => {
         amount,
         status: 'SUCCESS',
         reference: `transfer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        userId: SenderId
+        userId: SenderId,
+        walletId: senderWallet.id,
+        receiverWalletId: recipientWallet.id
     });
 }
 
@@ -102,7 +111,8 @@ const withdrawFunds = async (userId, amount) => {
         amount,
         status: 'SUCCESS',
         reference: `withdrawal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        userId
+        userId,
+        walletId: userWallet.id
     });
 }
 

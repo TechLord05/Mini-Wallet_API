@@ -37,13 +37,12 @@ model Transaction {
   amount    Decimal           @db.Decimal(15, 2)
   status    TransactionStatus @default(PENDING)
   reference String            @unique
-  meta      Json?
   createdAt DateTime          @default(now())
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
   walletId String
-  wallet Wallet @relation("WalletTransactions", fields: [walletId], references: {id})
+  wallet Wallet @relation("WalletTransactions", fields: [walletId], references: [id])
   receiverWalletId String?
   receiverWallet   Wallet? @relation("ReceivedTransactions", fields: [receiverWalletId], references: [id])
   @@index([userId])
