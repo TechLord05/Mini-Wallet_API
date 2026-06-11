@@ -1,72 +1,90 @@
 const walletService = require('../services/walletService');
+const { sendSuccess, sendError } = require('../utils/response');
 
 const getBalance = async (req, res) => {
-    const userId = req.user.userId; // Get the user ID from the authenticated request
+    const userId = req.user.userId;
     try {
-        const user_wallet = await walletService.getBalance(userId); // Get the user's wallet balance using the walletService
-        res.status(200).json({ balance: user_wallet }); // Return the wallet balance in the response
+        const balance = await walletService.getBalance(userId);
+        sendSuccess(res, { balance }, 200);
+    } catch (error) {
+        if (error.message === 'Wallet not found') {
+            return sendError(res, error.message, 'WALLET_NOT_FOUND', 404);
+        }
+        sendError(res, error.message, 'INTERNAL_SERVER_ERROR', 500);
     }
-    catch (error) {
-        res.status(500).json( { message: error.message });
-
-    }
-}
+};
 
 const initializePayment = async (req, res) => {
     const email = req.user.email;
     const amount = req.body.amount;
     const userId = req.user.userId;
-
     try {
-        const pay = await walletService.initializePayment(email, amount, userId); // Initialize a payment using the walletService
-        res.status(200).json({ authorization_url: pay }); // Return the authorization URL for the payment in the response
-        } 
-    catch (error) {
-        res.status(500).json( { message: error.message });
-    }
-}
-
-const handleWebhook = async (req, res) => {
-    try {
-        const process = await walletService.processWebhook(req.body, req.headers['x-paystack-signature']); // Process the webhook from Paystack using the walletService
-        res.status(200).json({ message: 'Wallet funded' });
+        const pay = await walletService.initializePayment(email, amount, userId);
+        sendSuccess(res, { authorization_url: pay }, 200);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        if (error.message === 'Wallet not found') {
+            return sendError(res, error.message, 'WALLET_NOT_FOUND', 404);
+        }
+        sendError(res, error.message, 'INTERNAL_SERVER_ERROR', 500);
     }
 };
 
+const handleWebhook = async (req, res) => {
+    try {
+        await walletService.processWebhook(req.body, req.headers['x-paystack-signature']);
+        sendSuccess(res, { message: 'Wallet funded' }, 200);
+    } catch (error) {
+        if (error.message === 'Invalid signature') {
+            return sendError(res, error.message, 'INVALID_SIGNATURE', 401);
+        }
+        if (error.message === 'Transaction not found') {
+            return sendError(res, error.message, 'TRANSACTION_NOT_FOUND', 404);
+        }
+        sendError(res, error.message, 'INTERNAL_SERVER_ERROR', 500);
+    }
+};
 
 const transfer = async (req, res) => {
     const senderId = req.user.userId;
     const { recipientId, amount } = req.body;
-
     try {
-        await walletService.transferFunds(senderId, recipientId, amount); // Transfer funds from the sender to the recipient using the walletService
-        res.status(200).json({ message: 'Transfer successful' });
+        await walletService.transferFunds(senderId, recipientId, amount);
+        sendSuccess(res, { message: 'Transfer successful' }, 200);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        if (error.message === 'Insufficient funds') {
+            return sendError(res, error.message, 'INSUFFICIENT_FUNDS', 400);
+        }
+        if (error.message === 'Sender or recipient wallet not found') {
+            return sendError(res, error.message, 'WALLET_NOT_FOUND', 404);
+        }
+        sendError(res, error.message, 'INTERNAL_SERVER_ERROR', 500);
     }
 };
 
 const withdraw = async (req, res) => {
     const userId = req.user.userId;
     const { amount } = req.body;
-
     try {
-        await walletService.withdrawFunds(userId, amount); // Withdraw funds from the user's wallet using the walletService
-        res.status(200).json({ message: 'Withdrawal successful' });
+        await walletService.withdrawFunds(userId, amount);
+        sendSuccess(res, { message: 'Withdrawal successful' }, 200);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        if (error.message === 'Insufficient funds') {
+            return sendError(res, error.message, 'INSUFFICIENT_FUNDS', 400);
+        }
+        if (error.message === 'Wallet not found') {
+            return sendError(res, error.message, 'WALLET_NOT_FOUND', 404);
+        }
+        sendError(res, error.message, 'INTERNAL_SERVER_ERROR', 500);
     }
 };
 
 const getTransactions = async (req, res) => {
     const userId = req.user.userId;
     try {
-        const transactions = await walletService.getTransactions(userId); // Get the user's transactions using the walletService
-        res.status(200).json({ transactions });
+        const transactions = await walletService.getTransactions(userId);
+        sendSuccess(res, { transactions }, 200);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        sendError(res, error.message, 'INTERNAL_SERVER_ERROR', 500);
     }
 };
 
