@@ -1,0 +1,1161 @@
+
+Claude finished the response
+
+Claude finished the response So i noticed something, i have the skill but i don't usually get gigs and this is because there are rarely Django gigs or jobs around here and a friend of mine said it's because i only use python-Django So i wanna consider learning NOdejs not learning like a total
+
+pasted
+
+Let's continue
+
+15:41
+Welcome back! You were right at the migration step — you need to run it in your Codespace terminal.
+
+Make sure your .env has the correct DATABASE_URL, then run:
+
+bash
+npx prisma migrate dev --name add_wallet_transaction_relations
+Paste the output and we'll continue from there. Once the migration is done, we'll update the service layer to pass walletId and receiverWalletId when creating transactions, since those fields are now required.
+
+@TechLord05 ➜ /workspaces/Mini-Wallet_API (main) $ npx prisma migrate dev --name add_wallet_transaction_relations
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": PostgreSQL database
+Error: Prisma schema validation - (get-config wasm)
+Error code: P1012
+error: Environment variable not found: DATABASE_URL.
+  -->  prisma/schema.prisma:7
+   | 
+ 6 |   provider = "postgresql"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+Validation Error Count: 1
+[Context: getConfig]
+Prisma CLI Version : 5.22.0
+@TechLord05 ➜ /workspaces/Mini-Wallet_API (main) $ @TechLord05 ➜ /workspaces/Mini-Wallet_API (main) $ npx prisma migrate dev --name add_wallet_transaction_relations
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": PostgreSQL database
+Error: Prisma schema validation - (get-config wasm)
+Error code: P1012
+@TechLord05 ➜ /workspaces/Mini-Wallet_API (main) $ .
+
+Show more
+15:42
+Your .env file isn't in the Codespace or isn't being read. Check:
+
+bash
+cat .env
+If it says "No such file" or DATABASE_URL is missing, you need to recreate it. Run:
+
+bash
+cp .env.example .env
+If there's no .env.example either, create it manually:
+
+bash
+nano .env
+Then paste in your variables:
+
+DATABASE_URL="postgresql://walletuser:walletpass@localhost:5432/mini_wallet"
+JWT_SECRET="your-jwt-secret"
+PORT=3000
+PAYSTACK_SECRET="sk_test_your_key"
+Important note — .env files are typically in .gitignore, which means they don't get pushed to GitHub and don't carry over to a new Codespace. This is correct security behavior, but it means you have to set them up fresh each time.
+
+For Codespaces specifically, the better approach is to use Codespace Secrets:
+
+Go to github.com → Settings → Codespaces → Secrets
+Add each variable there
+They'll be automatically injected into any Codespace you open
+But for now, just recreate the .env manually and paste the output of cat .env so we can confirm it's correct before running the migration again.
+
+I don't have it all here, it's on my local machine
+
+15:43
+No problem. Two options:
+
+Option 1 — Copy from your local machine
+
+On your local machine, run:
+
+bash
+cat ~/projects/mini-wallet-api/.env
+Copy the output, then in your Codespace terminal:
+
+bash
+nano .env
+Paste everything in, then Ctrl+X → Y → Enter to save.
+
+Option 2 — Just set up a fresh database in the Codespace
+
+Since Codespace is a fresh environment, you can spin up a new PostgreSQL there:
+
+bash
+sudo service postgresql start
+sudo -u postgres psql -c "CREATE USER walletuser WITH PASSWORD 'walletpass';"
+sudo -u postgres psql -c "CREATE DATABASE mini_wallet OWNER walletuser;"
+sudo -u postgres psql -c "ALTER USER walletuser CREATEDB;"
+Then create your .env:
+
+bash
+nano .env
+With:
+
+DATABASE_URL="postgresql://walletuser:walletpass@localhost:5432/mini_wallet"
+JWT_SECRET="any-random-string-for-dev"
+PORT=3000
+PAYSTACK_SECRET="sk_test_your_key_from_paystack_dashboard"
+For the PAYSTACK_SECRET — log into your Paystack dashboard and grab the test key again.
+
+Which option works better for you?
+
+@TechLord05 ➜ /workspaces/Mini-Wallet_API (main) $ sudo service postgresql start
+sudo -u postgres psql -c "CREATE USER walletuser WITH PASSWORD 'walletpass';"
+sudo -u postgres psql -c "CREATE DATABASE mini_wallet OWNER walletuser;"
+sudo -u postgres psql -c "ALTER USER walletuser CREATEDB;"
+postgresql: unrecognized service
+sudo: unknown user postgres
+sudo: error initializing audit plugin sudoers_audit
+sudo: unknown user postgres
+sudo: error initializing audit plugin sudoers_audit
+sudo: unknown user postgres
+sudo: error initializing audit plugin sudoers_audit
+
+Show more
+15:44
+PostgreSQL isn't installed in this Codespace. Install it first:
+
+bash
+sudo apt-get update
+sudo apt-get install -y postgresql postgresql-contrib
+Then start it and set up the database:
+
+bash
+sudo service postgresql start
+sudo -u postgres psql -c "CREATE USER walletuser WITH PASSWORD 'walletpass';"
+sudo -u postgres psql -c "CREATE DATABASE mini_wallet OWNER walletuser;"
+sudo -u postgres psql -c "ALTER USER walletuser CREATEDB;"
+Then create your .env:
+
+bash
+nano .env
+Paste this in:
+
+DATABASE_URL="postgresql://walletuser:walletpass@localhost:5432/mini_wallet"
+JWT_SECRET="super-secret-jwt-key-change-in-production"
+PORT=3000
+PAYSTACK_SECRET="sk_test_your_key_here"
+Ctrl+X → Y → Enter to save.
+
+Then run the migration:
+
+bash
+npx prisma migrate dev --name add_wallet_transaction_relations
+Paste the output.
+
+@TechLord05 ➜ /workspaces/Mini-Wallet_API (main) $ sudo service postgresql start
+sudo -u postgres psql -c "CREATE USER walletuser WITH PASSWORD 'walletpass';"
+sudo -u postgres psql -c "CREATE DATABASE mini_wallet OWNER walletuser;"
+sudo -u postgres psql -c "ALTER USER walletuser CREATEDB;"
+ * Starting PostgreSQL 16 database server                              [ OK ] 
+[sudo] password for codespace: 
+Sorry, try again.
+
+15:53
+It's asking for a password for the codespace user. In GitHub Codespaces the default sudo password is usually blank — just press Enter.
+
+If that doesn't work, try this alternative that bypasses the password issue:
+
+bash
+sudo -i -u postgres psql << EOF
+CREATE USER walletuser WITH PASSWORD 'walletpass';
+CREATE DATABASE mini_wallet OWNER walletuser;
+ALTER USER walletuser CREATEDB;
+EOF
+If that also fails, try:
+
+bash
+sudo su - postgres -c "psql -c \"CREATE USER walletuser WITH PASSWORD 'walletpass';\""
+sudo su - postgres -c "psql -c \"CREATE DATABASE mini_wallet OWNER walletuser;\""
+sudo su - postgres -c "psql -c \"ALTER USER walletuser CREATEDB;\""
+Paste whatever output you get.
+
+@TechLord05 ➜ /workspaces/Mini-Wallet_API (main) $ sudo -i -u postgres psql << EOF
+CREATE USER walletuser WITH PASSWORD 'walletpass';
+CREATE DATABASE mini_wallet OWNER walletuser;
+ALTER USER walletuser CREATEDB;
+EOF
+[sudo] password for codespace: 
+Sorry, try again.
+[sudo] password for codespace: 
+[2]+  Stopped                 sudo -i -u postgres psql <<EOF
+CREATE USER walletuser WITH PASSWORD 'walletpass';
+CREATE DATABASE mini_wallet OWNER walletuser;
+ALTER USER walletuser CREATEDB;
+EOF
+@TechLord05 ➜ /workspaces/Mini-Wallet_API (main) $ sudo su - postgres -c "psql -c \"CREATE USER walletuser WITH PASSWORD 'walletpass';\""
+sudo su - postgres -c "psql -c \"CREATE DATABASE mini_wallet OWNER walletuser;\""
+sudo su - postgres -c "psql -c \"ALTER USER walletuser CREATEDB;\""
+CREATE ROLE
+CREATE DATABASE
+ALTER ROLE
+@TechLord05 ➜ /workspaces/Mini-Wallet_API (main) $
+
+Show more
+15:55
+Database is set up. Now create your .env file:
+
+bash
+nano .env
+Paste this:
+
+DATABASE_URL="postgresql://walletuser:walletpass@localhost:5432/mini_wallet"
+JWT_SECRET="super-secret-jwt-key-change-in-production"
+PORT=3000
+PAYSTACK_SECRET="sk_test_your_key_here"
+Replace sk_test_your_key_here with your actual Paystack test key from the dashboard.
+
+Ctrl+X → Y → Enter to save.
+
+Then run:
+
+bash
+npx prisma migrate dev --name add_wallet_transaction_relations
+Paste the output.
+
+i can't get paystack key and secret key
+
+15:55
+No problem, just put a placeholder for now — we're only running a migration, not testing payments. The Paystack key isn't needed for the migration to work.
+
+bash
+nano .env
+Paste this exactly:
+
+DATABASE_URL="postgresql://walletuser:walletpass@localhost:5432/mini_wallet"
+JWT_SECRET="super-secret-jwt-key-change-in-production"
+PORT=3000
+PAYSTACK_SECRET="sk_test_placeholder"
+Save it, then run:
+
+bash
+npx prisma migrate dev --name add_wallet_transaction_relations
+Paste the output.
+
+@TechLord05 ➜ /workspaces/Mini-Wallet_API (main) $ nano .env
+@TechLord05 ➜ /workspaces/Mini-Wallet_API (main) $ npx prisma migrate dev --name add_wallet_transaction_relations
+Environment variables loaded from .env
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": PostgreSQL database "mini_wallet", schema "public" at "localhost:5432"
+Applying migration 20260410134153_init
+The following migration(s) have been applied:
+migrations/
+  └─ 20260410134153_init/
+    └─ migration.sql
+Applying migration 20260611150703_add_wallet_transaction_relations
+The following migration(s) have been created and applied from new schema changes:
+migrations/
+  └─ 20260611150703_add_wallet_transaction_relations/
+    └─ migration.sql
+Your database is now in sync with your schema.
+✔ Generated Prisma Client (v5.22.0) to ./node_modules/@prisma/client in 104ms
+
+Show more
+16:07
+Migration successful. Both migrations applied cleanly.
+
+Now we need to update the service layer to pass walletId when creating transactions, since it's now a required field. Open src/services/walletService.js — every createTransaction call needs to include walletId.
+
+The problem is we need to look up the wallet first to get its id. In most functions we're already doing that, so we just need to pass the wallet's id into the transaction data.
+
+Go through each function in walletService.js that calls walletRepository.createTransaction and tell me which ones they are.
+
+const walletRepository = require('../repositories/walletRepository');
+const axios = require('axios');
+const crypto = require('crypto');
+const prisma = require('../prisma'); 
+
+const getBalance = async (userId) => {
+    const user_wallet = await walletRepository.findWalletByUserId(userId);
+    if(!user_wallet){
+        throw new Error('Wallet not found');
+    }
+    return user_wallet.balance;
+}
+
+const initializePayment = async (email, amount, userId) => {
+    const reference = `wallet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const response = await axios.post(
+        'https://api.paystack.co/transaction/initialize',
+        { email, amount, reference },
+        { headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET}` } }
+    );
+    await walletRepository.createTransaction({
+        type: 'FUND',
+        amount,
+        status: 'PENDING',
+        reference,
+        userId
+    });
+    return response.data.data.authorization_url;
+}
+
+const processWebhook = async (body, signature) => {
+    const hash = crypto
+        .createHmac('sha512', process.env.PAYSTACK_SECRET)
+        .update(JSON.stringify(body))
+        .digest('hex');
+
+    if (hash !== signature) {
+        throw new Error('Invalid signature');
+    }
+
+    const { event, data } = body;
+
+    if (event === 'charge.success') {
+        const transaction = await walletRepository.findTransactionByReference(data.reference);
+        if (!transaction) {
+            throw new Error('Transaction not found');
+        }
+        if (transaction.status === 'SUCCESS') {
+            return; // Idempotency check - do nothing if already processed
+        }
+        await walletRepository.updateTransactionStatus(data.reference, 'SUCCESS');
+        await walletRepository.updateWalletBalance(transaction.userId, data.amount / 100, 'increment');
+    }
+}
+
+const transferFunds = async (SenderId, RecipientId, amount) => {
+    const senderWallet = await walletRepository.findWalletByUserId(SenderId);
+    const recipientWallet = await walletRepository.findWalletByUserId(RecipientId);
+
+    if (!senderWallet || !recipientWallet) {
+        throw new Error('Sender or recipient wallet not found');
+    }
+    if (senderWallet.balance < amount) {
+        throw new Error('Insufficient funds');
+    }
+
+    await prisma.$transaction([
+    // debit sender
+    prisma.wallet.update({
+        where: { userId: SenderId },
+        data: { balance: { decrement: amount } }
+    }),
+    // credit recipient
+    prisma.wallet.update({
+        where: { userId: RecipientId },
+        data: { balance: { increment: amount } }
+    })
+    ]);
+
+    await walletRepository.createTransaction({
+        type: 'TRANSFER',
+        amount,
+        status: 'SUCCESS',
+        reference: `transfer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        userId: SenderId
+    });
+}
+
+const withdrawFunds = async (userId, amount) => {
+    const userWallet = await walletRepository.findWalletByUserId(userId);
+    if (!userWallet) {
+        throw new Error('Wallet not found');
+    }
+    if (userWallet.balance < amount) {
+        throw new Error('Insufficient funds');
+    }
+
+    await walletRepository.updateWalletBalance(userId, amount, 'decrement');
+
+    await walletRepository.createTransaction({
+        type: 'WITHDRAWAL',
+        amount,
+        status: 'SUCCESS',
+        reference: `withdrawal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        userId
+    });
+}
+
+const getTransactions = async (userId) => {
+    return await walletRepository.findTransactionsByUserId(userId);
+}
+
+module.exports = { getBalance, initializePayment, processWebhook, transferFunds, withdrawFunds, getTransactions };
+Show more
+16:08
+Three functions call createTransaction:
+
+initializePayment
+transferFunds
+withdrawFunds
+Each one needs walletId added to the transaction data. The wallet id is different from userId — it's the wallet's own primary key.
+
+Good news — in transferFunds and withdrawFunds you already fetched the wallet before creating the transaction, so you already have it. In initializePayment you haven't fetched it yet, so you need to add that step.
+
+Update each function:
+
+initializePayment — add a wallet lookup before creating the transaction:
+
+javascript
+const wallet = await walletRepository.findWalletByUserId(userId);
+if (!wallet) throw new Error('Wallet not found');
+Then add walletId: wallet.id to the createTransaction call.
+
+transferFunds — you already have senderWallet, so add walletId: senderWallet.id and receiverWalletId: recipientWallet.id to the transaction data.
+
+withdrawFunds — you already have userWallet, so add walletId: userWallet.id to the transaction data.
+
+Make those three changes yourself and paste the updated file when done.
+
+const walletRepository = require('../repositories/walletRepository');
+const axios = require('axios');
+const crypto = require('crypto');
+const prisma = require('../prisma'); 
+
+const getBalance = async (userId) => {
+    const user_wallet = await walletRepository.findWalletByUserId(userId);
+    if(!user_wallet){
+        throw new Error('Wallet not found');
+    }
+    return user_wallet.balance;
+}
+
+const initializePayment = async (email, amount, userId) => {
+    const reference = `wallet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const response = await axios.post(
+        'https://api.paystack.co/transaction/initialize',
+        { email, amount, reference },
+        { headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET}` } }
+    );
+
+    const wallet = await walletRepository.findWalletByUserId(userId);
+    if (!wallet) throw new Error('Wallet not found');
+    await walletRepository.createTransaction({
+        type: 'FUND',
+        amount,
+        status: 'PENDING',
+        reference,
+        userId,
+        walletId: wallet.id
+    });
+    return response.data.data.authorization_url;
+}
+
+const processWebhook = async (body, signature) => {
+    const hash = crypto
+        .createHmac('sha512', process.env.PAYSTACK_SECRET)
+        .update(JSON.stringify(body))
+        .digest('hex');
+
+    if (hash !== signature) {
+        throw new Error('Invalid signature');
+    }
+
+    const { event, data } = body;
+
+    if (event === 'charge.success') {
+        const transaction = await walletRepository.findTransactionByReference(data.reference);
+        if (!transaction) {
+            throw new Error('Transaction not found');
+        }
+        if (transaction.status === 'SUCCESS') {
+            return; // Idempotency check - do nothing if already processed
+        }
+        await walletRepository.updateTransactionStatus(data.reference, 'SUCCESS');
+        await walletRepository.updateWalletBalance(transaction.userId, data.amount / 100, 'increment');
+    }
+}
+
+const transferFunds = async (SenderId, RecipientId, amount) => {
+    const senderWallet = await walletRepository.findWalletByUserId(SenderId);
+    const recipientWallet = await walletRepository.findWalletByUserId(RecipientId);
+
+    if (!senderWallet || !recipientWallet) {
+        throw new Error('Sender or recipient wallet not found');
+    }
+    if (senderWallet.balance < amount) {
+        throw new Error('Insufficient funds');
+    }
+
+    await prisma.$transaction([
+    // debit sender
+    prisma.wallet.update({
+        where: { userId: SenderId },
+        data: { balance: { decrement: amount } }
+    }),
+    // credit recipient
+    prisma.wallet.update({
+        where: { userId: RecipientId },
+        data: { balance: { increment: amount } }
+    })
+    ]);
+
+    await walletRepository.createTransaction({
+        type: 'TRANSFER',
+        amount,
+        status: 'SUCCESS',
+        reference: `transfer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        userId: SenderId,
+        walletId: senderWallet.id,
+        receiverWalletId: recipientWallet.id
+    });
+}
+
+const withdrawFunds = async (userId, amount) => {
+    const userWallet = await walletRepository.findWalletByUserId(userId);
+    if (!userWallet) {
+        throw new Error('Wallet not found');
+    }
+    if (userWallet.balance < amount) {
+        throw new Error('Insufficient funds');
+    }
+
+    await walletRepository.updateWalletBalance(userId, amount, 'decrement');
+
+    await walletRepository.createTransaction({
+        type: 'WITHDRAWAL',
+        amount,
+        status: 'SUCCESS',
+        reference: `withdrawal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        userId,
+        walletId: userWallet.id
+    });
+}
+
+const getTransactions = async (userId) => {
+    return await walletRepository.findTransactionsByUserId(userId);
+}
+
+module.exports = { getBalance, initializePayment, processWebhook, transferFunds, withdrawFunds, getTransactions };
+Show more
+16:16
+Perfect. All three functions updated correctly.
+
+One small thing — in initializePayment you're calling Paystack before checking if the wallet exists. If the wallet doesn't exist, you'd have already made a pointless API call to Paystack. Move the wallet lookup to before the Paystack call:
+
+javascript
+const initializePayment = async (email, amount, userId) => {
+    const wallet = await walletRepository.findWalletByUserId(userId);
+    if (!wallet) throw new Error('Wallet not found');
+    
+    const reference = `wallet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const response = await axios.post(
+        'https://api.paystack.co/transaction/initialize',
+        { email, amount, reference },
+        { headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET}` } }
+    );
+
+    await walletRepository.createTransaction({
+        type: 'FUND',
+        amount,
+        status: 'PENDING',
+        reference,
+        userId,
+        walletId: wallet.id
+    });
+    return response.data.data.authorization_url;
+}
+Make that fix, then start the server and test the endpoints in Postman to make sure nothing broke. Run:
+
+bash
+npm run dev
+Paste any errors you see.
+
+const walletRepository = require('../repositories/walletRepository');
+const axios = require('axios');
+const crypto = require('crypto');
+const prisma = require('../prisma'); 
+
+const getBalance = async (userId) => {
+    const user_wallet = await walletRepository.findWalletByUserId(userId);
+    if(!user_wallet){
+        throw new Error('Wallet not found');
+    }
+    return user_wallet.balance;
+}
+
+const initializePayment = async (email, amount, userId) => {
+    const wallet = await walletRepository.findWalletByUserId(userId);
+    if (!wallet)
+        throw new Error('Wallet not found');
+    
+    
+    const reference = `wallet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const response = await axios.post(
+        'https://api.paystack.co/transaction/initialize',
+        { email, amount, reference },
+        { headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET}` } }
+    );
+
+    await walletRepository.createTransaction({
+        type: 'FUND',
+        amount,
+        status: 'PENDING',
+        reference,
+        userId,
+        walletId: wallet.id
+    });
+    return response.data.data.authorization_url;
+}
+
+const processWebhook = async (body, signature) => {
+    const hash = crypto
+        .createHmac('sha512', process.env.PAYSTACK_SECRET)
+        .update(JSON.stringify(body))
+        .digest('hex');
+
+    if (hash !== signature) {
+        throw new Error('Invalid signature');
+    }
+
+    const { event, data } = body;
+
+    if (event === 'charge.success') {
+        const transaction = await walletRepository.findTransactionByReference(data.reference);
+        if (!transaction) {
+            throw new Error('Transaction not found');
+        }
+        if (transaction.status === 'SUCCESS') {
+            return; // Idempotency check - do nothing if already processed
+        }
+        await walletRepository.updateTransactionStatus(data.reference, 'SUCCESS');
+        await walletRepository.updateWalletBalance(transaction.userId, data.amount / 100, 'increment');
+    }
+}
+
+const transferFunds = async (SenderId, RecipientId, amount) => {
+    const senderWallet = await walletRepository.findWalletByUserId(SenderId);
+    const recipientWallet = await walletRepository.findWalletByUserId(RecipientId);
+
+    if (!senderWallet || !recipientWallet) {
+        throw new Error('Sender or recipient wallet not found');
+    }
+    if (senderWallet.balance < amount) {
+        throw new Error('Insufficient funds');
+    }
+
+    await prisma.$transaction([
+    // debit sender
+    prisma.wallet.update({
+        where: { userId: SenderId },
+        data: { balance: { decrement: amount } }
+    }),
+    // credit recipient
+    prisma.wallet.update({
+        where: { userId: RecipientId },
+        data: { balance: { increment: amount } }
+    })
+    ]);
+
+    await walletRepository.createTransaction({
+        type: 'TRANSFER',
+        amount,
+        status: 'SUCCESS',
+        reference: `transfer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        userId: SenderId,
+        walletId: senderWallet.id,
+        receiverWalletId: recipientWallet.id
+    });
+}
+
+const withdrawFunds = async (userId, amount) => {
+    const userWallet = await walletRepository.findWalletByUserId(userId);
+    if (!userWallet) {
+        throw new Error('Wallet not found');
+    }
+    if (userWallet.balance < amount) {
+        throw new Error('Insufficient funds');
+    }
+
+    await walletRepository.updateWalletBalance(userId, amount, 'decrement');
+
+    await walletRepository.createTransaction({
+        type: 'WITHDRAWAL',
+        amount,
+        status: 'SUCCESS',
+        reference: `withdrawal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        userId,
+        walletId: userWallet.id
+    });
+}
+
+const getTransactions = async (userId) => {
+    return await walletRepository.findTransactionsByUserId(userId);
+}
+
+module.exports = { getBalance, initializePayment, processWebhook, transferFunds, withdrawFunds, getTransactions };
+Show more
+16:18
+Good. Now start the server and test the basic endpoints to make sure nothing broke with the schema changes.
+
+bash
+npm run dev
+Then in Postman, run through these in order:
+
+Register a new user (fresh database, old users are gone)
+Login and get a token
+Get Balance — should return 0
+Transaction History — should return empty array
+We're not testing payments yet since the Paystack key is a placeholder. Just confirm the auth and wallet read endpoints work.
+
+Paste any errors from the terminal or Postman.
+
+you have to help me test you know i don' have postman here, let's use curl
+
+16:19
+Sure, let's use curl. First start the server:
+
+bash
+npm run dev
+Then open a second terminal and run these one by one:
+
+Register:
+
+bash
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"firstName": "Tech", "lastName": "Lord", "email": "tech@lord.com", "password": "password123"}'
+Login:
+
+bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "tech@lord.com", "password": "password123"}'
+Copy the token from the login response, then:
+
+Get Balance:
+
+bash
+curl http://localhost:3000/api/wallet/balance \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
+Transaction History:
+
+bash
+curl http://localhost:3000/api/wallet/transactions \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
+Paste the outputs.
+
+@TechLord05 ➜ /workspaces/Mini-Wallet_API (main) $ curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "tech@lord.com", "password": "password123"}'
+{"message":"Login successful","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3N2MzNzJjMi1mYzMwLTRlODUtOWJlZC1jYTk2ZWYxNDcyZjUiLCJlbWFpbCI6InRlY2hAbG9yZC5jb20iLCJpYXQiOjE3ODExOTEyNzQsImV4cCI6MTc4MTc5NjA3NH0.oufGKU404NFrUbCzEweMaiN-speUHThKsw4WPeAqisg"}@TechLord05 ➜ /workspaces/Mini-Wallet_API (main) $
+
+16:21
+Login works. Now test balance and transaction history — paste your token in:
+
+Get Balance:
+
+bash
+curl http://localhost:3000/api/wallet/balance \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3N2MzNzJjMi1mYzMwLTRlODUtOWJlZC1jYTk2ZWYxNDcyZjUiLCJlbWFpbCI6InRlY2hAbG9yZC5jb20iLCJpYXQiOjE3ODExOTEyNzQsImV4cCI6MTc4MTc5NjA3NH0.oufGKU404NFrUbCzEweMaiN-speUHThKsw4WPeAqisg"
+Transaction History:
+
+bash
+curl http://localhost:3000/api/wallet/transactions \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3N2MzNzJjMi1mYzMwLTRlODUtOWJlZC1jYTk2ZWYxNDcyZjUiLCJlbWFpbCI6InRlY2hAbG9yZC5jb20iLCJpYXQiOjE3ODExOTEyNzQsImV4cCI6MTc4MTc5NjA3NH0.oufGKU404NFrUbCzEweMaiN-speUHThKsw4WPeAqisg"
+Paste both outputs.
+
+@TechLord05 ➜ /workspaces/Mini-Wallet_API (main) $ curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "tech@lord.com", "password": "password123"}'
+{"message":"Login successful","token":"eyJhbGciOiJIUzI1NiIsIn  R5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3N2MzNzJjMi1mYzMwLTRlODUtOWJlZC  1jYTk2ZWYxNDcyZjUiLCJlbWFpbCI6InRlY2hAbG9yZC5jb20iLCJpYXQiOjE  3ODExOTEyNzQsImV4cCI6MTc4MTc5NjA3NH0.oufGKU404NFrUbCzEweMaiN-  speUHThKsw4WPeAqisg"}@TechLord05 ➜ /workspaces/Mini-Wallet_AP
+@TechLord05 ➜ /workspaces/Mini-Wallet_API (main) $ curl http://localhost:3000/api/wallet/balance \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3N2MzNzJjMi1mYzMwLTRlODUtOWJlZC1jYTk2ZWYxNDcyZjUiLCJlbWFpbCI6InRlY2hAbG9yZC5jb20iLCJpYXQiOjE3ODExOTEyNzQsImV4cCI6MTc4MTc5NjA3NH0.oufGKU404NFrUbCzEweMaiN-speUHThKsw4WPeAqisg"
+{"balance":"0"}@TechLord05 ➜ /workspaces/Mini-Wallecurl http://localhost:3000/api/wallet/transactions \/transactions \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3N2MzNzJjMi1mYzMwLTRlODUtOWJlZC1jYTk2ZWYxNDcyZjUiLCJlbWFpbCI6InRlY2hAbG9yZC5jb20iLCJpYXQiOjE3ODExOTEyNzQsImV4cCI6MTc4MTc5NjA3NH0.oufGKU404NFrUbCzEweMaiN-speUHThKsw4WPeAqisg"
+{"transactions":[]}@TechLord05 ➜ /workspaces/Mini-Wallet_API (main) $
+
+Show more
+16:21
+Everything works cleanly:
+
+Balance returns 0 ✅
+Transactions returns empty array ✅
+Schema changes didn't break anything ✅
+Now let's push these changes to GitHub:
+
+bash
+git add .
+git commit -m "refactor: layered architecture + schema improvements"
+git push
+Then we move to the next topic — API Design. This is where you'll learn what makes an API good or bad, and you'll apply it directly to what you just built.
+
+Before I start teaching — look at your current API responses. For example, a successful balance check returns:
+
+json
+{"balance":"0"}
+And an error returns:
+
+json
+{"message":"Wallet not found"}
+In your opinion, what's wrong or missing from these responses? What would make them better?
+
+I don't know
+
+16:24
+That's fine. Let me show you by comparing two real APIs.
+
+Your current balance response:
+
+json
+{"balance":"0"}
+What a production API returns:
+
+json
+{
+  "success": true,
+  "data": {
+    "balance": "0",
+    "currency": "NGN"
+  }
+}
+Your current error response:
+
+json
+{"message": "Wallet not found"}
+What a production API returns:
+
+json
+{
+  "success": false,
+  "error": {
+    "code": "WALLET_NOT_FOUND",
+    "message": "Wallet not found"
+  }
+}
+The differences:
+
+Consistent structure — every response has the same shape. The client always knows where to find the data, always knows if it succeeded or failed.
+success field — client doesn't have to check HTTP status codes alone to know if something worked.
+error codes — WALLET_NOT_FOUND is machine-readable. A mobile app can check the code and show the right message in Yoruba, Igbo, or English. A plain message string can't do that.
+currency — context that makes the data useful.
+Right now your API is inconsistent — some responses return {message}, some return {balance}, some return {transactions}. A frontend developer consuming your API has to handle each endpoint differently.
+
+The fix is a standard response format used across every single endpoint.
+
+Does this make sense before we implement it?
+
+yes
+
+16:25
+Good. We'll create a helper file that formats all responses consistently.
+
+Create a new file src/utils/response.js. This file will have two functions — one for success responses, one for error responses.
+
+Based on the format I showed you, write the two functions yourself:
+
+sendSuccess(res, data, statusCode) — sends a success response sendError(res, message, code, statusCode) — sends an error response
+
+Both functions should return the consistent structure I showed you. Export both.
+
+Try it yourself — it's just two simple functions.
+
+const sendSuccess = (res, data, statusCode) => {
+    return res.status(statusCode).json({
+        success: true,
+        data
+    });
+}
+
+const sendError = (res, code, statusCode) => {
+    return res.status(statusCode).json({
+        success: false,
+        error: code
+    });
+}
+Show more
+16:29
+Almost. sendError is missing the message parameter — the function signature should be (res, message, code, statusCode) and the response body should include both:
+
+javascript
+{
+  success: false,
+  error: {
+    code: code,
+    message: message
+  }
+}
+Fix that, add module.exports = { sendSuccess, sendError } at the bottom, and paste the updated file.
+
+const sendSuccess = (res, data, statusCode) => {
+    return res.status(statusCode).json({
+        success: true,
+        data
+    });
+}
+
+const sendError = (res, message, code, statusCode) => {
+    return res.status(statusCode).json({
+        success: false,
+        error: {
+        code: code,
+        message: message
+        }
+    });
+}
+
+
+module.exports = { sendSuccess, sendError }
+Show more
+16:30
+Perfect. Now update your controllers to use these instead of res.json() and res.status().json() directly.
+
+Start with src/controllers/auth.js. Import the helpers at the top and replace every response with sendSuccess or sendError.
+
+For example, the register success response changes from:
+
+javascript
+res.status(201).json({ message: 'Registration successful', userId: user.id });
+to:
+
+javascript
+sendSuccess(res, { message: 'Registration successful', userId: user.id }, 201);
+And the error changes from:
+
+javascript
+res.status(400).json({ message: error.message });
+to:
+
+javascript
+sendError(res, error.message, 'AUTH_ERROR', 400);
+Rewrite the full src/controllers/auth.js yourself and paste it.
+
+const authService = require('../services/authService');
+const sendSuccess = require('../utils/response').sendSuccess;
+const sendError = require('../utils/response').sendError;
+
+
+// Register a new user
+const register = async (req, res) => {
+  try {
+    const { firstName, lastName, email, password } = req.body;
+    const user = await authService.registerUser(firstName, lastName, email, password);
+    sendSuccess(res, { message: 'Registration successful', userId: user.id }, 201);
+  } catch (error) {
+    sendError(res, error.message, 'BAD_REQUEST', 400);
+  }
+};
+
+// Login an existing user
+const login = async (req, res) => {
+    try {
+        const { email, password } = req.body; // Extract email and password from the request body
+
+        const token = await authService.loginUser(email, password); // Attempt to log in the user using the authService
+        sendSuccess(res, { message: 'Login successful', token }, 200); // Return a success message and the generated token upon successful login
+    }
+    catch (error) {
+        sendError(res, error.message, 'BAD_REQUEST', 400); // Return a server error message if something goes wrong 
+    }
+};
+
+module.exports =  { register, login }; // Export the register and login functions for use in other parts of the application
+Show more
+16:32
+Good. One small improvement — the import at the top can be cleaner using destructuring, same pattern you've used everywhere else:
+
+javascript
+const { sendSuccess, sendError } = require('../utils/response');
+Fix that one line, then do the same for src/controllers/wallet.js — replace all responses with sendSuccess and sendError.
+
+For error codes use descriptive names like WALLET_NOT_FOUND, INSUFFICIENT_FUNDS, TRANSFER_ERROR etc. rather than generic BAD_REQUEST everywhere.
+
+Paste the updated wallet controller when done.
+
+const walletService = require('../services/walletService');
+const { sendSuccess, sendError } = require('../utils/response');
+
+const getBalance = async (req, res) => {
+    const userId = req.user.userId; // Get the user ID from the authenticated request
+    try {
+        const user_wallet = await walletService.getBalance(userId); // Get the user's wallet balance using the walletService
+        sendSuccess(res, { balance: user_wallet }, 200); // Return the wallet balance in the response
+    }
+    catch (error) {
+        sendError(res, error.message, 'INTERNAL_SERVER_ERROR', 500);
+    }
+}
+
+const initializePayment = async (req, res) => {
+    const email = req.user.email;
+    const amount = req.body.amount;
+    const userId = req.user.userId;
+
+    try {
+        const pay = await walletService.initializePayment(email, amount, userId); // Initialize a payment using the walletService
+        sendSuccess(res, { authorization_url: pay }, 200); // Return the authorization URL for the payment in the response
+        } 
+    catch (error) {
+        sendError(res, error.message, 'INTERNAL_SERVER_ERROR', 500);
+    }
+}
+
+const handleWebhook = async (req, res) => {
+    try {
+        const process = await walletService.processWebhook(req.body, req.headers['x-paystack-signature']); // Process the webhook from Paystack using the walletService
+        sendSuccess(res, { message: 'Wallet funded' }, 200);
+    } catch (error) {
+        sendError(res, error.message, 'INTERNAL_SERVER_ERROR', 500);
+    }
+};
+
+
+const transfer = async (req, res) => {
+    const senderId = req.user.userId;
+    const { recipientId, amount } = req.body;
+
+    try {
+        await walletService.transferFunds(senderId, recipientId, amount); // Transfer funds from the sender to the recipient using the walletService
+        sendSuccess(res, { message: 'Transfer successful' }, 200);
+    } catch (error) {
+        sendError(res, error.message, 'INTERNAL_SERVER_ERROR', 500);
+    }
+};
+
+const withdraw = async (req, res) => {
+    const userId = req.user.userId;
+    const { amount } = req.body;
+
+    try {
+        await walletService.withdrawFunds(userId, amount); // Withdraw funds from the user's wallet using the walletService
+        sendSuccess(res, { message: 'Withdrawal successful' }, 200);
+    } catch (error) {
+        sendError(res, error.message, 'INTERNAL_SERVER_ERROR', 500);
+    }
+};
+
+const getTransactions = async (req, res) => {
+    const userId = req.user.userId;
+    try {
+        const transactions = await walletService.getTransactions(userId); // Get the user's transactions using the walletService
+        sendSuccess(res, { transactions }, 200);
+    } catch (error) {
+        sendError(res, error.message, 'INTERNAL_SERVER_ERROR', 500);
+    }
+};
+
+module.exports = { getBalance, initializePayment, handleWebhook, transfer, withdraw, getTransactions };
+Show more
+16:46
+Good structure. One thing to improve — you're using INTERNAL_SERVER_ERROR for every error regardless of what went wrong. That loses the specific error codes we talked about.
+
+The services throw meaningful errors like 'Insufficient funds' and 'Wallet not found'. Match the error code to the error:
+
+javascript
+catch (error) {
+    if (error.message === 'Insufficient funds') {
+        return sendError(res, error.message, 'INSUFFICIENT_FUNDS', 400);
+    }
+    if (error.message === 'Wallet not found') {
+        return sendError(res, error.message, 'WALLET_NOT_FOUND', 404);
+    }
+    sendError(res, error.message, 'INTERNAL_SERVER_ERROR', 500);
+}
+Update the catch blocks in getBalance, transfer, and withdrawFunds with specific error codes. The others can stay as INTERNAL_SERVER_ERROR since they don't have predictable user-facing errors.
+
+Make those changes and paste the updated file.
+
+make it for me
+
+16:49
+Here it is — read through it, then type it yourself:
+
+javascript
+const walletService = require('../services/walletService');
+const { sendSuccess, sendError } = require('../utils/response');
+
+const getBalance = async (req, res) => {
+    const userId = req.user.userId;
+    try {
+        const balance = await walletService.getBalance(userId);
+        sendSuccess(res, { balance }, 200);
+    } catch (error) {
+        if (error.message === 'Wallet not found') {
+            return sendError(res, error.message, 'WALLET_NOT_FOUND', 404);
+        }
+        sendError(res, error.message, 'INTERNAL_SERVER_ERROR', 500);
+    }
+};
+
+const initializePayment = async (req, res) => {
+    const email = req.user.email;
+    const amount = req.body.amount;
+    const userId = req.user.userId;
+    try {
+        const pay = await walletService.initializePayment(email, amount, userId);
+        sendSuccess(res, { authorization_url: pay }, 200);
+    } catch (error) {
+        if (error.message === 'Wallet not found') {
+            return sendError(res, error.message, 'WALLET_NOT_FOUND', 404);
+        }
+        sendError(res, error.message, 'INTERNAL_SERVER_ERROR', 500);
+    }
+};
+
+const handleWebhook = async (req, res) => {
+    try {
+        await walletService.processWebhook(req.body, req.headers['x-paystack-signature']);
+        sendSuccess(res, { message: 'Wallet funded' }, 200);
+    } catch (error) {
+        if (error.message === 'Invalid signature') {
+            return sendError(res, error.message, 'INVALID_SIGNATURE', 401);
+        }
+        if (error.message === 'Transaction not found') {
+            return sendError(res, error.message, 'TRANSACTION_NOT_FOUND', 404);
+        }
+        sendError(res, error.message, 'INTERNAL_SERVER_ERROR', 500);
+    }
+};
+
+const transfer = async (req, res) => {
+    const senderId = req.user.userId;
+    const { recipientId, amount } = req.body;
+    try {
+        await walletService.transferFunds(senderId, recipientId, amount);
+        sendSuccess(res, { message: 'Transfer successful' }, 200);
+    } catch (error) {
+        if (error.message === 'Insufficient funds') {
+            return sendError(res, error.message, 'INSUFFICIENT_FUNDS', 400);
+        }
+        if (error.message === 'Sender or recipient wallet not found') {
+            return sendError(res, error.message, 'WALLET_NOT_FOUND', 404);
+        }
+        sendError(res, error.message, 'INTERNAL_SERVER_ERROR', 500);
+    }
+};
+
+const withdraw = async (req, res) => {
+    const userId = req.user.userId;
+    const { amount } = req.body;
+    try {
+        await walletService.withdrawFunds(userId, amount);
+        sendSuccess(res, { message: 'Withdrawal successful' }, 200);
+    } catch (error) {
+        if (error.message === 'Insufficient funds') {
+            return sendError(res, error.message, 'INSUFFICIENT_FUNDS', 400);
+        }
+        if (error.message === 'Wallet not found') {
+            return sendError(res, error.message, 'WALLET_NOT_FOUND', 404);
+        }
+        sendError(res, error.message, 'INTERNAL_SERVER_ERROR', 500);
+    }
+};
+
+const getTransactions = async (req, res) => {
+    const userId = req.user.userId;
+    try {
+        const transactions = await walletService.getTransactions(userId);
+        sendSuccess(res, { transactions }, 200);
+    } catch (error) {
+        sendError(res, error.message, 'INTERNAL_SERVER_ERROR', 500);
+    }
+};
+
+module.exports = { getBalance, initializePayment, handleWebhook, transfer, withdraw, getTransactions };
+Once you've typed it, test balance and transactions with curl to confirm the response format changed. Paste the outputs.
+
+
+
+
+
+
+Claude is AI and can make mistakes. Please double-check responses.
