@@ -12,6 +12,11 @@ export class PaymentService {
   ) {}
 
   async initializePayment(userId: string, email: string, amount: number) {
+      const wallet = await this.prisma.wallet.findUnique({ where: { userId } });
+      if (!wallet) {
+        throw new BadRequestException('Wallet not found');
+      }
+    
     const reference = `PAY-${Date.now()}`;
 
     const response = await axios.post(
@@ -31,7 +36,7 @@ export class PaymentService {
         status: 'PENDING',
         reference,
         userId,
-        walletId: (await this.prisma.wallet.findUnique({ where: { userId } })).id,
+        walletId: wallet.id,
         paymentProvider: 'paystack',
         narration: 'Wallet funding via Paystack',
       },

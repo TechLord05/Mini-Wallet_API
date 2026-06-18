@@ -1,6 +1,7 @@
 import { Controller, Post, Body, UseGuards, Request, Headers, Req } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { JwtGuard } from '../auth/guards/jwt.guard';
+import { InitializePaymentDto } from './dto/initialize.dto';
 
 @Controller('payment')
 export class PaymentController {
@@ -8,7 +9,7 @@ export class PaymentController {
 
   @UseGuards(JwtGuard)
   @Post('initialize')
-  initialize(@Request() req, @Body() body: { amount: number }) {
+  initialize(@Request() req, @Body() body: InitializePaymentDto) {
     return this.payment.initializePayment(req.user.userId, req.user.email, body.amount);
   }
 
