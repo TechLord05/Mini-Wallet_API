@@ -87,4 +87,35 @@ export class WalletService {
     });
     return { transactions };
   }
+
+  async withdraw(userId: string, amount: number, narration: string){
+    const wallet = await this.prisma.wallet.findUnique({ where: { userId } });
+    if (!wallet) throw new NotFoundException('Wallet not found');
+
+    if (Number(wallet.balance) < amount) {
+      throw new BadRequestException('Insufficient balance');
+    }
+
+    const reference = `WTH-${Date.now()}`;
+
+    const [, updatedWallet] = await this.prisma.$transaction([
+      this.prisma.transaction.create({
+        data: {
+          type: 'WITHDRAWAL',
+          amount,
+          status: 'SUCCESS',
+          reference,
+          userId,
+          walletId: wallet.id,
+          narration,
+        },
+      }),
+      this.prisma.wallet.update({
+        where: { userId },
+        data: { balance: { decrement: amount } },
+      }),
+    ]);
+
+    return { message: 'Withdrawal successful', balance: updatedWallet.balance };
+  }
 }

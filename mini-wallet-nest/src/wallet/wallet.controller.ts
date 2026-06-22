@@ -3,6 +3,7 @@ import { WalletService } from './wallet.service';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { FundDto } from './dto/fund.dto';
 import { TransferDto } from './dto/transfer.dto';
+import { WithdrawDto } from './dto/withdraw.dto';
 
 @UseGuards(JwtGuard)
 @Controller('wallet')
@@ -27,5 +28,10 @@ export class WalletController {
   @Get('transactions')
   getTransactions(@Request() req) {
     return this.wallet.getTransactions(req.user.userId);
+  }
+
+  @Post('withdraw')
+  withdraw(@Request() req, @Body() body: WithdrawDto) {
+    return this.wallet.withdraw(req.user.userId, body.amount, body.narration);
   }
 }
