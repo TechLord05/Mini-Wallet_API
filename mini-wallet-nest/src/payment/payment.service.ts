@@ -84,4 +84,65 @@ export class PaymentService {
 
     return { received: true };
   }
+
+  async resolveAccount(accountNumber: string, bankCode: string) {
+    const response = await axios.get(
+      `https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`,
+      {
+        headers: {
+          Authorization: `Bearer ${this.config.get('PAYSTACK_SECRET_KEY')}`,
+        },
+      },
+    );
+
+    return {
+      accountNumber: response.data.data.account_number,
+      accountName: response.data.data.account_name,
+    };
+  }
+
+  async createTransferRecipient(accountNumber: string, bankCode: string, accountName: string) {
+    const response = await axios.post(
+      'https://api.paystack.co/transferrecipient',
+      {
+        type: 'nuban',
+        name: accountName,
+        account_number: accountNumber,
+        bank_code: bankCode,
+        currency: 'NGN',
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${this.config.get('PAYSTACK_SECRET_KEY')}`,
+        },
+      },
+    );
+
+    return {
+      recipientCode: response.data.data.recipient_code,
+    };
+  }
+
+  async initiateTransfer(recipientCode: string, amount: number, reference: string, reason: string) {
+    const response = await axios.post(
+      'https://api.paystack.co/transfer',
+      {
+        source: 'balance',
+        amount: amount * 100,
+        recipient: recipientCode,
+        reference,
+        reason,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${this.config.get('PAYSTACK_SECRET_KEY')}`,
+        },
+      },
+    );
+
+    return {
+      transferCode: response.data.data.transfer_code,
+      status: response.data.data.status,
+    };
+  }
 }
