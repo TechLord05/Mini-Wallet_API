@@ -82,6 +82,46 @@ export class PaymentService {
       ]);
     }
 
+    if (event.event === 'transfer.success') {
+      const reference = event.data.reference;
+
+      const transaction = await this.prisma.transaction.findUnique({
+        where: { reference },
+      });
+
+      if (!transaction || transaction.status !== 'PENDING') return;
+
+      await this.prisma.transaction.update({
+        where: { reference },
+        data: {
+          status: 'SUCCESS',
+          paymentReference: event.data.transfer_code,
+        },
+      });
+    }
+
+    if (event.event === 'transfer.failed' || event.event === 'transfer.reversed') {
+      const reference = event.data.reference;
+
+      const transaction = await this.prisma.transaction.findUnique({
+        where: { reference },
+      });
+
+      if (!transaction || transaction.status !== 'PENDING') return;
+
+      // refund the wallet and mark transaction failed
+      await this.prisma.$transaction([
+        this.prisma.transaction.update({
+          where: { reference },
+          data: { status: 'FAILED' },
+        }),
+        this.prisma.wallet.update({
+          where: { id: transaction.walletId },
+          data: { balance: { increment: transaction.amount } },
+        }),
+      ]);
+    }
+
     return { received: true };
   }
 
