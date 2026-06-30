@@ -1,10 +1,13 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaymentService } from '../payment/payment.service';
 
 @Injectable()
 export class WalletService {
-  constructor(private prisma: PrismaService) {}
-
+  constructor(
+    private prisma: PrismaService,
+    private payment: PaymentService,
+  ) {}
   async getBalance(userId: string) {
     const wallet = await this.prisma.wallet.findUnique({
       where: { userId },
@@ -88,7 +91,13 @@ export class WalletService {
     return { transactions };
   }
 
-  async withdraw(userId: string, amount: number, narration: string){
+  async withdraw(
+  userId: string,
+  amount: number,
+  accountNumber: string,
+  bankCode: string,
+  narration: string,
+) {
     const wallet = await this.prisma.wallet.findUnique({ where: { userId } });
     if (!wallet) throw new NotFoundException('Wallet not found');
 
@@ -96,17 +105,29 @@ export class WalletService {
       throw new BadRequestException('Insufficient balance');
     }
 
+    // Step 1: confirm the account is real
+    const resolved = await this.payment.resolveAccount(accountNumber, bankCode);
+
+    // Step 2: create a Paystack recipient for this account
+    const recipient = await this.payment.createTransferRecipient(
+      accountNumber,
+      bankCode,
+      resolved.accountName,
+    );
+
     const reference = `WTH-${Date.now()}`;
 
+    // Step 3: debit wallet + create PENDING transaction atomically
     const [, updatedWallet] = await this.prisma.$transaction([
       this.prisma.transaction.create({
         data: {
           type: 'WITHDRAWAL',
           amount,
-          status: 'SUCCESS',
+          status: 'PENDING',
           reference,
           userId,
           walletId: wallet.id,
+          paymentProvider: 'paystack',
           narration,
         },
       }),
@@ -116,6 +137,33 @@ export class WalletService {
       }),
     ]);
 
-    return { message: 'Withdrawal successful', balance: updatedWallet.balance };
+    // Step 4: initiate the actual transfer
+    try {
+      await this.payment.initiateTransfer(
+        recipient.recipientCode,
+        amount,
+        reference,
+        narration,
+      );
+    } catch (err) {
+      // Transfer call itself failed — refund immediately, don't wait for webhook
+      await this.prisma.$transaction([
+        this.prisma.transaction.update({
+          where: { reference },
+          data: { status: 'FAILED' },
+        }),
+        this.prisma.wallet.update({
+          where: { userId },
+          data: { balance: { increment: amount } },
+        }),
+      ]);
+      throw new BadRequestException('Transfer initiation failed, wallet refunded');
+    }
+
+    return {
+      message: 'Withdrawal initiated, pending confirmation',
+      balance: updatedWallet.balance,
+      accountName: resolved.accountName,
+    };
   }
 }

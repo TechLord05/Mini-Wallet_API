@@ -6,5 +6,11 @@ export class WithdrawDto {
   amount: number;
 
   @IsString()
+  accountNumber: string;
+
+  @IsString()
+  bankCode: string;
+
+  @IsString()
   narration: string;
 }

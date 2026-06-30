@@ -32,6 +32,12 @@ export class WalletController {
 
   @Post('withdraw')
   withdraw(@Request() req, @Body() body: WithdrawDto) {
-    return this.wallet.withdraw(req.user.userId, body.amount, body.narration);
+    return this.wallet.withdraw(
+      req.user.userId,
+      body.amount,
+      body.accountNumber,
+      body.bankCode,
+      body.narration,
+    );
   }
 }
